@@ -1,9 +1,3 @@
----
-editor_options: 
-  markdown: 
-    wrap: 72
----
-
 # **Real-time dengue nowcasting: Lessons learned from the 2024 outbreak in Puerto Rico**
 
 **General disclaimer:** This repository was created for use by CDC
