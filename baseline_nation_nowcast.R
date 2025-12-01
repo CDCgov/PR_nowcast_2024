@@ -1,4 +1,4 @@
-rm(list = setdiff(ls(), c("nowcast_date", "nowcast_list", "NobBs_stan_model", "AR1_poisson_stan_model","denv_org")))
+rm(list = setdiff(ls(), c("nowcast_date", "nowcast_list", "NobBs_stan_model","denv_org")))
 gc()
 
 library(tidyverse)
@@ -37,9 +37,8 @@ baseline_forecast <- function(observed, horizon = 4, num_samples = 100000, quant
   return(baseline_df)
 }
 
-denv = denv_org
-##Define the nowcast date####
-#nowcast_date = max(denv$report_wk)
+denv <- denv_org
+
 ## pick historical data for nowcast if desired
 denv <- filter(denv, report_wk <= nowcast_date)
 
@@ -61,31 +60,27 @@ params <- find_delay_params(
 )
 
 ##nowcast
-current_year = year(nowcast_date)
-denv_sel_year <-  denv %>% filter(report_yr %in% (current_year-1):current_year) 
-case_counts <- denv_sel_year %>%
-  group_by(report_wk) %>%
+#Samples of case data 52 weeks ago (Please change to your data accordingly)
+case_counts <- denv %>%
+  group_by(onset_wk) %>%
   summarise(cases = n())
 # Create complete date sequence
-full_dates <- tibble(report_wk = lapply((current_year - 1):current_year, function(x) {
-  date_range = range(filter(denv_sel_year, report_yr == x)$report_wk)
-  seq(date_range[1], date_range[2], 7)
-}) %>% unlist %>% as.Date()) %>% tail(52 + params$window)
-
+date_range <- range(denv$report_wk, denv$onset_wk)
+full_dates <- data.frame(onset_wk = seq(date_range[1], date_range[2], 7))
 # Join with counts
 case_counts_full <- full_dates %>%
-  left_join(case_counts, by = "report_wk") %>%
+  left_join(case_counts, by = "onset_wk") %>%
   mutate(cases = replace_na(cases, 0))
+observed = rpois(52 - params$window, 16) 
 
-case_counts_full_train = head(case_counts_full$cases, - params$window)
-
-nowcast_baseline = baseline_forecast(observed = case_counts_full_train, horizon = params$window)
+#Run baseline nowcast:
+nowcast_baseline = baseline_forecast(observed = observed, horizon = params$window)
 
 test_now = list(estimates = data.frame(
   estimate = nowcast_baseline$`0.5`,
   lower_95 = nowcast_baseline$`0.05`, upper_95 = nowcast_baseline$`0.975`,
   lower_50 = nowcast_baseline$`0.025`, upper_50 = nowcast_baseline$`0.75`,
   subpopulation = "Nation",
-  delay_date = tail(case_counts_full$report_wk, params$window), n.reported = tail(case_counts_full$cases, params$window)
+  delay_date = tail(case_counts_full$onset_wk, params$window), n.reported = tail(case_counts_full$cases, params$window)
 )) %>% 
   saveRDS(paste0("output/nation_baseline_nowcast_", nowcast_date, ".rds"))

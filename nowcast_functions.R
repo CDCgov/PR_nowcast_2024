@@ -1,4 +1,3 @@
-require(rjags)
 require(tidyverse)
 require(rstan)
 options(mc.cores = parallel::detectCores()) # checks number of cores without having later to specify the cores argument

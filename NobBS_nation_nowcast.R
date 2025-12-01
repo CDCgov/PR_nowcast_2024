@@ -1,14 +1,12 @@
-rm(list = setdiff(ls(), c("nowcast_date", "nowcast_list", "NobBs_stan_model", "denv_org")))
+rm(list = setdiff(ls(), c("nowcast_date", "nowcast_list", "NobBs_stan_model","denv_org", "subpop_set")))
 gc()
 
 library(tidyverse)
 library(lubridate)
-library(readxl)
 
-denv = denv_org
-##Define the nowcast date####
-#nowcast_date = max(denv$report_wk)
-## pick historical data for nowcast if desired
+denv <- denv_org
+
+# Pick historical data for nowcast if desired
 denv <- filter(denv, report_wk <= nowcast_date)
 
 #Analyze on the national scale:

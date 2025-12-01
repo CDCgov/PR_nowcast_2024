@@ -3,12 +3,9 @@ gc()
 
 library(tidyverse)
 library(lubridate)
-library(readxl)
 
-denv = denv_org
+denv <- denv_org
 
-##Define the nowcast date####
-#nowcast_date = max(denv$report_wk)
 ## pick historical data for nowcast if desired
 denv <- filter(denv, report_wk <= nowcast_date)
 
