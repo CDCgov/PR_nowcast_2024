@@ -7,16 +7,20 @@ eventual_case_dat <- read.csv("data/denv_sample_dat_eventually_reported.csv")
 eventual_case_dat$delay_date = as.Date(eventual_case_dat$delay_date, "%m/%d/%Y")
 nation_ereported <- eventual_case_dat %>% group_by(delay_date) %>% summarise(cases = n())
 region_ereported <- eventual_case_dat %>% group_by(delay_date, health_region) %>% summarise(cases = n()) %>% rename(subpopulation = health_region)
-serotype_ereported <- eventual_case_dat %>% group_by(delay_date, serotype) %>% summarise(cases = n()) %>% rename(subpopulation = serotype)
+serotype_ereported <- eventual_case_dat %>% group_by(delay_date, serotype) %>% summarise(cases = n()) %>% rename(subpopulation = serotype) %>% mutate(subpopulation = as.character(subpopulation))
 
 ##Loading output from the models
 #Nation output:
 l_output = c()
+l_nowcast_post = c()
 for(model in c("baseline", "default")){
   output = readRDS(paste0("output/nation_", model,"_nowcast_", nowcast_date,".rds"))
   output$estimates$model = case_when(model == "baseline" ~ "Baseline", 
                                     model == "default" ~ "NobBS")
   output$estimates = output$estimates %>% left_join(nation_ereported, by = "delay_date")
+  nowcastpost = output$nowcast.post.samps$nowcast
+  if(model == "default") nowcastpost = nowcastpost[,,1]
+  l_nowcast_post = c(l_nowcast_post, list(nowcastpost))
   l_output = c(l_output, list(output$estimates))
 }
 #Subpopulation output:
@@ -32,10 +36,11 @@ for(i in 1:nrow(all_subpop)){
   if(model == "ind"){
     outputsubpop = lapply(output, function(x) x$estimates) %>% Reduce(rbind, .)
   } else if(model == "baseline"){
-    outputsubpop = output %>% Reduce(rbind, .)
+    outputsubpop = output %>% lapply(function(x) x$estimates) %>% Reduce(rbind, .)
   } else {
     outputsubpop = output$estimates
   }
+  outputsubpop$subpopulation = as.character(outputsubpop$subpopulation)
   outputsubpop$subpoptype = subpoptype
   outputsubpop$model = case_when(model == "baseline" ~ "Baseline", 
                                  model == "ind" ~ "Individual parameters",
@@ -46,7 +51,15 @@ for(i in 1:nrow(all_subpop)){
     subpoptype_case_data = serotype_ereported
   }
   outputsubpop = outputsubpop %>% left_join(subpoptype_case_data, by = c("delay_date", "subpopulation"))
-  
+  if(model == "ind"){
+    nowcastpostsubpop = lapply(output, function(x) x$nowcast.post.samps$nowcast[,,1])
+  } else if(model == "baseline"){
+    nowcastpostsubpop = lapply(output, function(x) x$nowcast.post.samps$nowcast)
+  } else if(model == "shared"){
+    temp = output$nowcast.post.samps$nowcast
+    nowcastpostsubpop = lapply(1:dim(temp)[3], function(x) temp[,,x])
+  }
+  l_nowcast_post = c(l_nowcast_post, nowcastpostsubpop)
   l_output = c(l_output, list(outputsubpop))
 }
 
@@ -114,3 +127,9 @@ lapply(l_output, calculate_wis_components) %>% Reduce(rbind, .) %>%
   group_by(subpoptype, model) %>%
   summarise(WIS = mean(WIS), AE = mean(AE),
           Dispersion = mean(Dispersion), Underprediction = mean(Underprediction), Overprediction = mean(Overprediction))
+
+#Failed nowcast:
+obs_case_v = l_output %>% lapply(function(x) x$cases) %>% unlist
+nowcast_post_mat = l_nowcast_post %>% lapply(function(x) t(x[1:10000,])) %>% Reduce(rbind, .)
+failed_nowcast = which((nowcast_post_mat == obs_case_v) %>% rowSums < 1)
+(l_output %>% Reduce(bind_rows, .))[failed_nowcast,]

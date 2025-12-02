@@ -67,7 +67,7 @@ national and subpopulations data.
 -   **`nowcast_functions.R`** – Scripts for running NobBS model in stan.
 
 -   **`model_evaluation.R`** – Scripts for model evaluation (50%, 95%
-    intervals coverage and WIS)
+    intervals coverage, WIS, and failed nowcasts).  
 
 -   **`Plot.R`** – Scripts for plotting, comparing nowcasts from
     different models.
@@ -89,8 +89,8 @@ national and subpopulations data.
     -   produce posterior distribution of nowcasts.
 
 3.  **Evaluate model performance** Use scripts in `/model_evaluation.R`
-    to compute 50%, 95% coverage and WIS (decompose scoring components,
-    and compare independent vs. shared-parameter models).
+    to compute 50%, 95% coverage, WIS (decompose scoring components,
+    and compare independent vs. shared-parameter models), and classify failed nowcast (log score < -9.2).
 
 ------------------------------------------------------------------------
 

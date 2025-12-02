@@ -34,7 +34,7 @@ baseline_forecast <- function(observed, horizon = 4, num_samples = 100000, quant
   baseline_df <- do.call(rbind, quantiles_by_horizon)
   colnames(baseline_df)[-1] = quantile_levels
   rownames(baseline_df) <- NULL
-  return(baseline_df)
+  return(list(sum_post = baseline_df, nowcast_post = forecasts))
 }
 
 denv = denv_org
@@ -87,13 +87,18 @@ for(i in 1:length(all_subpopulation)){
   #Nowcast model run
   nowcast_baseline = baseline_forecast(observed = observed, horizon = params$window)
   
-  test_now_all_subpopulation_l = list(estimates = data.frame(
-    estimate = nowcast_baseline$`0.5`,
-    lower_95 = nowcast_baseline$`0.05`, upper_95 = nowcast_baseline$`0.975`,
-    lower_50 = nowcast_baseline$`0.025`, upper_50 = nowcast_baseline$`0.75`,
+  test_now_all_subpopulation_l = c(test_now_all_subpopulation_l, 
+    list(
+    list(estimates = data.frame(
+    estimate = nowcast_baseline$sum_post$`0.5`,
+    lower_95 = nowcast_baseline$sum_post$`0.05`, upper_95 = nowcast_baseline$sum_post$`0.975`,
+    lower_50 = nowcast_baseline$sum_post$`0.025`, upper_50 = nowcast_baseline$sum_post$`0.75`,
     subpopulation = all_subpopulation[i],
     delay_date = tail(case_counts_full$onset_wk, params$window), 
     n.reported = tail(case_counts_full$cases, params$window)
-  )) %>% c(test_now_all_subpopulation_l, .)
+  ), nowcast.post.samps = list(nowcast = nowcast_baseline$nowcast_post)
+  )
+  )
+  )
 }
 saveRDS(test_now_all_subpopulation_l, paste0("output/", subpop_set, "_baseline_nowcast_", nowcast_date, ".rds"))
